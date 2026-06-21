@@ -26,6 +26,7 @@ def get_task(task_id: str) -> Optional[Dict[str, Any]]:
     return {
         "task_id": str(task.task_id),
         "project_id": task.project_id,
+        "user_id": task.user_id,
         "status": task.status,
         "progress": task.progress,
         "progress_history": task.progress_history,

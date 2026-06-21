@@ -60,6 +60,7 @@ def build_project(data: BrainBuildSchema) -> BrainBuildOutputSchema:
         set_task(builder_result.get("task_id"), {
             "task_id": builder_result.get("task_id"),
             "project_id": builder_result.get("project_id"),
+            "user_id": data.user_id or "",
             "status": builder_result.get("status"),
             "progress": builder_result.get("progress"),
             "progress_history": builder_result.get("progress_history"),
@@ -142,6 +143,7 @@ def build_project(data: BrainBuildSchema) -> BrainBuildOutputSchema:
     set_task(task_id, {
         "task_id": task_id,
         "project_id": project_id,
+        "user_id": data.user_id or "",
         "requested_engine": requested_engine,
         "status": "in_progress",
         "progress": 0,

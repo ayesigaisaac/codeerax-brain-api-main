@@ -18,6 +18,7 @@ class BuildTask(models.Model):
 
     task_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     project_id = models.CharField(max_length=100)
+    user_id = models.CharField(max_length=100, blank=True, default="")
     requested_engine = models.CharField(max_length=50, default="auth")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_QUEUED)
     progress = models.PositiveSmallIntegerField(default=0)
@@ -36,6 +37,7 @@ class BuildTask(models.Model):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["task_id"]),
+            models.Index(fields=["user_id"]),
             models.Index(fields=["project_id", "requested_engine"]),
             models.Index(fields=["status"]),
         ]
