@@ -32,9 +32,11 @@ class SimpleRateLimitMiddleware(MiddlewareMixin):
 
         history = self.cache.get(ip, [])
         history = [t for t in history if now - t < self.TIME_WINDOW]
-        history.append(now)
 
-        if len(history) > self.RATE_LIMIT:
+        if not history:
+            self.cache.pop(ip, None)
+
+        if len(history) >= self.RATE_LIMIT:
             from django.http import JsonResponse
             return JsonResponse(
                 {
@@ -49,6 +51,7 @@ class SimpleRateLimitMiddleware(MiddlewareMixin):
                 status=429,
             )
 
+        history.append(now)
         self.cache[ip] = history
 
     def get_client_ip(self, request):

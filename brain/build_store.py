@@ -1,26 +1,41 @@
-import threading
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-_lock = threading.Lock()
-_store: Dict[str, Dict[str, Any]] = {}
+from brain.models import BuildTask
 
 
 def set_task(task_id: str, data: Dict[str, Any]) -> None:
-    with _lock:
-        _store[task_id] = data.copy()
+    fields = {k: v for k, v in data.items() if k != "task_id"}
+    BuildTask.objects.update_or_create(task_id=task_id, defaults=fields)
 
 
 def update_task(task_id: str, updates: Dict[str, Any]) -> None:
-    with _lock:
-        if task_id in _store:
-            _store[task_id].update(updates)
+    try:
+        task = BuildTask.objects.get(task_id=task_id)
+    except BuildTask.DoesNotExist:
+        return
+    for key, value in updates.items():
+        setattr(task, key, value)
+    task.save(update_fields=list(updates.keys()) + ["updated_at"])
 
 
-def get_task(task_id: str):
-    with _lock:
-        return _store.get(task_id)
+def get_task(task_id: str) -> Optional[Dict[str, Any]]:
+    try:
+        task = BuildTask.objects.get(task_id=task_id)
+    except BuildTask.DoesNotExist:
+        return None
+    return {
+        "task_id": str(task.task_id),
+        "project_id": task.project_id,
+        "status": task.status,
+        "progress": task.progress,
+        "progress_history": task.progress_history,
+        "message": task.message,
+        "config": task.config,
+        "engines": task.engines,
+        "heart_status": task.heart_status,
+        "runtime_url": task.runtime_url,
+    }
 
 
-def clear_all():
-    with _lock:
-        _store.clear()
+def clear_all() -> None:
+    BuildTask.objects.all().delete()

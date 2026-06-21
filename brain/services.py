@@ -77,7 +77,7 @@ def build_project(data: BrainBuildSchema) -> BrainBuildOutputSchema:
 
         try:
             heart_response = dispatch_to_heart(heart_execute)
-        except Exception as exc:
+        except Exception:
             # Log the raw exception server-side to preserve debug info
             logging.exception("Exception during Heart dispatch")
 
@@ -138,6 +138,21 @@ def build_project(data: BrainBuildSchema) -> BrainBuildOutputSchema:
         return response
 
     # Generic flow for other engines
+    task_id = str(uuid.uuid4())
+    set_task(task_id, {
+        "task_id": task_id,
+        "project_id": project_id,
+        "requested_engine": requested_engine,
+        "status": "in_progress",
+        "progress": 0,
+        "progress_history": [],
+        "message": f"Build request queued for {requested_engine} engine.",
+        "config": {},
+        "engines": [requested_engine],
+        "heart_status": "",
+        "runtime_url": "",
+    })
+
     try:
         heart_response = dispatch_to_heart(
             HeartExecuteSchema(
@@ -149,11 +164,17 @@ def build_project(data: BrainBuildSchema) -> BrainBuildOutputSchema:
                 metadata=data.metadata,
             )
         )
-    except Exception as exc:
-        # Log the raw exception server-side to preserve debug info
+    except Exception:
         logging.exception("Exception during Heart dispatch (generic flow)")
 
-        # Sanitize error details to avoid leaking internal system information
+        update_task(task_id, {
+            "status": "failed",
+            "progress": 100,
+            "message": "Build request failed while dispatching to Heart.",
+            "heart_status": "failed",
+            "runtime_url": "",
+        })
+
         return {
             "project_id": project_id,
             "requested_engine": requested_engine,
@@ -161,8 +182,17 @@ def build_project(data: BrainBuildSchema) -> BrainBuildOutputSchema:
             "heart_status": "failed",
             "runtime_url": "",
             "message": "Build request failed while dispatching to Heart.",
+            "task_id": task_id,
             "status": "failed",
         }
+
+    update_task(task_id, {
+        "status": "completed",
+        "progress": 100,
+        "message": "Brain processed the build request and dispatched it to Heart.",
+        "heart_status": heart_response["status"],
+        "runtime_url": heart_response["runtime_url"],
+    })
 
     return {
         "project_id": project_id,
@@ -171,5 +201,7 @@ def build_project(data: BrainBuildSchema) -> BrainBuildOutputSchema:
         "heart_status": heart_response["status"],
         "runtime_url": heart_response["runtime_url"],
         "message": "Brain processed the build request and dispatched it to Heart.",
+        "task_id": task_id,
+        "status": "completed",
     }
 
